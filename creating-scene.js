@@ -84,6 +84,12 @@ var material = new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleS
 var surface = new THREE.Mesh(geometry, material);
 surface.rotation.x = -1.57;
 
+var cubeGeometry = new THREE.BoxGeometry(5, 5, 10);
+var cubeMaterial = new THREE.MeshBasicMaterial({color: 0xff00000});
+var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+cube.position.set(2.5, 2.5, 5.001);
+surface.add(cube);
+
 scene.add(surface);
 
 var gridHelper = new THREE.GridHelper(100, 20);
