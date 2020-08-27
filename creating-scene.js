@@ -3,8 +3,12 @@ var PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window
 // var StereoCamera = new THREE.StereoCamera();
 
 var camera = PerspectiveCamera;
+camera.position.y = 25;
+camera.position.z = 100;
+
 var cameraSpeed = {x: 0, y: 0};
 
+// Renderer
 var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -40,12 +44,12 @@ addEventListener('keyup', (event)=>{
 
 // Utility
 
-var geometry = new THREE.BoxGeometry();
-var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
-var cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
+var geometry = new THREE.PlaneGeometry(100, 100);
+var material = new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide});
+var surface = new THREE.Mesh(geometry, material);
+surface.rotation.x = -1.57;
 
-camera.position.z = 20;
+scene.add(surface);
 
 function updateCameraPosition() {
     camera.position.x += cameraSpeed.x;
@@ -55,9 +59,6 @@ function updateCameraPosition() {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // cube.rotation.x += 0.01;
-    // cube.rotation.y += 0.01;
 
     updateCameraPosition();
 
