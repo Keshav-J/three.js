@@ -61,16 +61,18 @@ scene.add(sphere);
 // Camera
 
 var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 10000);
-// var controls = new THREE.OrbitControls(camera, renderer.domElement);
-// var controls = new THREE.FirstPersonControls(camera, renderer.domElement);
 var controls = new THREE.PointerLockControls(camera, document.body);
 
 var moveForward = 0;
 var moveRight = 0;
 var resetForward = false;
 var resetRight = false;
+var dHeight = 0;
+const gravity = -0.2;
+const friction = 0.91;
 
 camera.position.y = 2;
+camera.position.x = 10;
 
 scene.add(controls.getObject());
 
@@ -86,9 +88,6 @@ addEventListener('resize', () => {
 addEventListener('click', () => {
     controls.lock();
 }, false);
-
-
-// addEventListener
 
 addEventListener('keydown', (event) => {
     switch(event.key) {
@@ -106,8 +105,10 @@ addEventListener('keydown', (event) => {
 
 addEventListener('keyup', (event) => {
     switch(event.key) {
-        case 'w': case 'ArrowUp': case 's': case 'ArrowDown': resetForward = true; break;
-        case 'a': case 'ArrowLeft': case 'd': case 'ArrowRight': resetRight = true; break;
+        case 'w': case 'ArrowUp': if(moveForward > 0) resetForward = true; break;
+        case 's': case 'ArrowDown': if(moveForward < 0) resetForward = true; break;
+        case 'd': case 'ArrowRight': if(moveRight > 0) resetRight = true; break;
+        case 'a': case 'ArrowLeft': if(moveRight < 0) resetRight = true; break;
     }
 });
 
@@ -131,6 +132,16 @@ function animate() {
     
     controls.moveForward(moveForward);
     controls.moveRight(moveRight);
+    
+    if(camera.position.y + dHeight > 10)
+        dHeight = 0;
+    
+    camera.position.y += gravity + dHeight;
+    
+    if(camera.position.y < 2) {
+        camera.position.y = 2;
+        dHeight = 0;
+    }
     
 	renderer.render(scene, camera);
 }
