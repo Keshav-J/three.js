@@ -28,12 +28,12 @@ var geometry = new THREE.PlaneGeometry(surfaceDimensions.height, surfaceDimensio
 var material = new THREE.MeshBasicMaterial({map: surfaceTexture});
 
 var surface = new THREE.Mesh(geometry, material);
-surface.rotation.x = -1.57;
+surface.rotation.x = -(Math.PI / 2);
 surface.receiveShadow = true;
 
 var gridHelper = new THREE.GridHelper(100, 20, 0x5c78bd, 0x5c78bd);
-gridHelper.position.z = 0.04;
-gridHelper.rotation.x = -1.57;
+gridHelper.position.z = 0;
+gridHelper.rotation.x = -(Math.PI / 2);
 
 surface.add(gridHelper);
 
@@ -61,11 +61,18 @@ scene.add(sphere);
 // Camera
 
 var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 10000);
-var controls = new THREE.OrbitControls(camera, renderer.domElement);
+// var controls = new THREE.OrbitControls(camera, renderer.domElement);
+// var controls = new THREE.FirstPersonControls(camera, renderer.domElement);
+var controls = new THREE.PointerLockControls(camera, document.body);
 
-camera.position.set(0, 150, 0);
-controls.update();
-controls.enableDamping = true;      // Smooth release
+var moveForward = 0;
+var moveRight = 0;
+var resetForward = false;
+var resetRight = false;
+
+camera.position.y = 2;
+
+scene.add(controls.getObject());
 
 // Event Listeners
 
@@ -73,7 +80,35 @@ addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    controls.handleResize();
+    // controls.handleResize();
+});
+
+addEventListener('click', () => {
+    controls.lock();
+}, false);
+
+
+// addEventListener
+
+addEventListener('keydown', (event) => {
+    switch(event.key) {
+        case 'w': case 'ArrowUp': case 's': case 'ArrowDown': resetForward = false; break;
+        case 'a': case 'ArrowLeft': case 'd': case 'ArrowRight': resetRight = false; break;
+    }
+    switch(event.key) {
+        case 'w': case 'ArrowUp'   : moveForward = 0.2;  break;
+        case 's': case 'ArrowDown' : moveForward = -0.2; break;
+        case 'd': case 'ArrowRight': moveRight = 0.2;    break;
+        case 'a': case 'ArrowLeft' : moveRight = -0.2;   break;
+        case ' ': dHeight = 0.5; break;
+    }
+});
+
+addEventListener('keyup', (event) => {
+    switch(event.key) {
+        case 'w': case 'ArrowUp': case 's': case 'ArrowDown': resetForward = true; break;
+        case 'a': case 'ArrowLeft': case 'd': case 'ArrowRight': resetRight = true; break;
+    }
 });
 
 // Animate Function
@@ -81,8 +116,22 @@ addEventListener('resize', () => {
 function animate() {
 	requestAnimationFrame( animate );
 
-	controls.update();
-
+    // controls.update();
+    
+    if(resetForward){
+        if(moveForward > 0) moveForward = Math.max(0, moveForward-0.01);
+        else if(moveForward < 0) moveForward = Math.min(0, moveForward+0.01);
+        else resetForward = false;
+    }
+    if(resetRight){
+        if(moveRight > 0) moveRight = Math.max(0, moveRight-0.01);
+        else if(moveRight < 0) moveRight = Math.min(0, moveRight+0.01);
+        else resetRight = false;
+    }
+    
+    controls.moveForward(moveForward);
+    controls.moveRight(moveRight);
+    
 	renderer.render(scene, camera);
 }
 
