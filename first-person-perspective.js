@@ -145,7 +145,7 @@ function updateHeight() {
     
     var dt = Math.min(0.15, cur_time - prev_time);
     
-    camera.position.y += dHeight * dt;
+    camera.position.y += dHeight * dt + 0.5 * gravity * dt * dt;
     dHeight += gravity * dt;
 }
 
