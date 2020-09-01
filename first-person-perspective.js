@@ -14,9 +14,9 @@ scene.fog = new THREE.Fog(0xffffff, 0, 750);
 
 var textureLoader = new THREE.TextureLoader();
 
-var cubeTexture = textureLoader.load( 'textures/building.jpg' );
+var cubeTexture = textureLoader.load('./textures/building.jpg');
 
-var surfaceTexture = textureLoader.load('textures/ground.png');
+var surfaceTexture = textureLoader.load('./textures/ground.png');
 surfaceTexture.wrapS = surfaceTexture.wrapT = THREE.RepeatWrapping;
 surfaceTexture.repeat.set(20, 20);
 surfaceTexture.anisotropy = Math.max(1, renderer.getMaxAnisotropy());
@@ -28,12 +28,11 @@ var geometry = new THREE.PlaneGeometry(surfaceDimensions.height, surfaceDimensio
 var material = new THREE.MeshBasicMaterial({map: surfaceTexture});
 
 var surface = new THREE.Mesh(geometry, material);
-surface.rotation.x = -(Math.PI / 2);
-surface.receiveShadow = true;
+surface.rotateX( - Math.PI/2 );
 
 var gridHelper = new THREE.GridHelper(100, 20, 0x5c78bd, 0x5c78bd);
 gridHelper.position.z = 0;
-gridHelper.rotation.x = -(Math.PI / 2);
+gridHelper.rotateX( - Math.PI/2 );
 
 surface.add(gridHelper);
 
@@ -43,20 +42,11 @@ const cubeDimensions = {side: 5, height: 10}
 var cubeGeometry = new THREE.BoxGeometry(cubeDimensions.side, cubeDimensions.side, cubeDimensions.height);
 var cubeMaterial = new THREE.MeshBasicMaterial({map: cubeTexture});
 var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-// cube.position.set(-47.5, 47.5, 5.001);
 cube.position.set(2.5, 2.5, 5.001);
 
 surface.add(cube);
 
 scene.add(surface);
-
-// Outer Sphere
-
-var sphereGeometry = new THREE.SphereGeometry(1000, 64, 64);
-var sphereMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
-var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-
-scene.add(sphere);
 
 // Camera
 
