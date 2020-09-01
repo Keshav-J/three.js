@@ -1,79 +1,123 @@
-// Renderer
+// ******* Declarations ********
 
-var renderer = new THREE.WebGLRenderer({antialias : true});
+var render, scene, camera, controls;
+var textureLoader, cubeTextures, gridTexture;
+var gridHelper, gridGeometry;
+var geometry, material, plane;
+
+var grid = [], gridCnt = 30;
+const cubeSide = 50, minHeight = 50, maxHeight = 150;
+const origin = -(cubeSide * (gridCnt/2)) + (cubeSide / 2);
+const minCameraHeight = 20;
+
+// ***** Utility Functions *****
+
+function getRandomInteger(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
+function getRandomCubeTexture(cubeTextures) {
+    return cubeTextures[Math.floor(Math.random() * cubeTextures.length)];
+}
+
+function addBuilding() {
+    const cubeHeight = getRandomInteger(minHeight, maxHeight);
+    var cubeGeometry = new THREE.BoxBufferGeometry(cubeSide, cubeHeight, cubeSide);
+    var cubeMaterial = new THREE.MeshBasicMaterial({map: getRandomCubeTexture(cubeTextures)});
+    var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+
+    var x, y;
+    do {
+        x = getRandomInteger(0, gridCnt-1);
+        y = getRandomInteger(0, gridCnt-1);
+    } while(grid[x][y].material.color.equals(new THREE.Color(0x5c78bd)));
+    
+    grid[x][y].material.color.set(0x5c78bd);
+        
+    cube.position.x = origin + y * cubeSide;
+    cube.position.y = 0.1 + cubeHeight / 2;
+    cube.position.z = origin + x * cubeSide;
+
+    scene.add(cube);
+}
+
+// ---------- Renderer ----------
+
+renderer = new THREE.WebGLRenderer({antialias : true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Scene
+// ----------- Scene ------------
 
-var scene = new THREE.Scene();
-scene.background = new THREE.Color( 0xcceeff );
-scene.fog = new THREE.Fog(0xffffff, 0, 750);
+scene = new THREE.Scene();
+scene.background = new THREE.Color( 0xf0f0f0 );
 
-// Textures
+// ---------- Textures ----------
 
-var textureLoader = new THREE.TextureLoader();
+textureLoader = new THREE.TextureLoader();
+cubeTextures = [
+    textureLoader.load('./textures/building.jpg'),
+    textureLoader.load('./textures/building2.jpg'),
+    textureLoader.load('./textures/building3.jpg')
+];
+gridTexture = textureLoader.load('./textures/ground.png');
 
-var cubeTexture = textureLoader.load('./textures/building.jpg');
+// --------- Grid Helper --------
 
-var surfaceTexture = textureLoader.load('./textures/ground.png');
-surfaceTexture.wrapS = surfaceTexture.wrapT = THREE.RepeatWrapping;
-surfaceTexture.repeat.set(20, 20);
-surfaceTexture.anisotropy = Math.max(1, renderer.getMaxAnisotropy());
+gridHelper = new THREE.GridHelper(1500, gridCnt, 0x5c78bd, 0x5c78bd);
+scene.add(gridHelper);
+gridHelper.position.y = 0.2; // 0.15;
 
-// Surface
+// ------------ Grid ------------
 
-const surfaceDimensions = {height: 100, width: 100};
-var geometry = new THREE.PlaneGeometry(surfaceDimensions.height, surfaceDimensions.width);
-var material = new THREE.MeshBasicMaterial({map: surfaceTexture});
+gridGeometry = new THREE.PlaneBufferGeometry(cubeSide, cubeSide);
 
-var surface = new THREE.Mesh(geometry, material);
-surface.rotateX( - Math.PI/2 );
+for(var row=0 ; row<gridCnt ; ++row) {
+    grid.push([]);
+    for(var col=0 ; col<gridCnt ; ++col) {
+        var cell = new THREE.Mesh(gridGeometry, new THREE.MeshBasicMaterial({color: 0xffffff, map: gridTexture}));
+        
+        cell.rotateX( - Math.PI/2 );
+        cell.position.set(origin + col*cubeSide, 0, origin + row*cubeSide);
+        
+        grid[row].push(cell);
+        scene.add(cell);
+    }
+}
 
-var gridHelper = new THREE.GridHelper(100, 20, 0x5c78bd, 0x5c78bd);
-gridHelper.position.z = 0;
-gridHelper.rotateX( - Math.PI/2 );
+// ------- Fire Building --------
 
-surface.add(gridHelper);
+for(var i=0 ; i<250 ; ++i)
+    addBuilding();
 
-// Cube
+// ----------- Plane ------------
 
-const cubeDimensions = {side: 5, height: 10}
-var cubeGeometry = new THREE.BoxGeometry(cubeDimensions.side, cubeDimensions.side, cubeDimensions.height);
-var cubeMaterial = new THREE.MeshBasicMaterial({map: cubeTexture});
-var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-cube.position.set(2.5, 2.5, 5.001);
+geometry = new THREE.PlaneBufferGeometry(1500, 1500);
+geometry.rotateX( - Math.PI/2 );
+material = new THREE.MeshBasicMaterial({visible: false});
 
-surface.add(cube);
+plane = new THREE.Mesh(geometry, material);
 
-scene.add(surface);
+scene.add(plane);
 
-// Camera
+// ---------- Camera ------------
 
-var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 10000);
-var controls = new THREE.PointerLockControls(camera, document.body);
-
-var moveForward = 0;
-var moveRight = 0;
-var resetForward = false;
-var resetRight = false;
-
-const gravity = -0.5;
-var isJumped = false;
-var dHeight = 0;
-
-camera.position.y = 2;
+camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 10000);
 camera.position.x = 10;
+camera.position.y = minCameraHeight + 10;
 
+// --------- Controls -----------
+
+controls = new THREE.PointerLockControls(camera, document.body);
 scene.add(controls.getObject());
 
-// Event Listeners
+
+// ****** Event Listeners ******
 
 addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    // controls.handleResize();
 });
 
 addEventListener('click', () => {
@@ -86,11 +130,11 @@ addEventListener('keydown', (event) => {
         case 'a': case 'ArrowLeft': case 'd': case 'ArrowRight': resetRight = false; break;
     }
     switch(event.key) {
-        case 'w': case 'ArrowUp'   : moveForward = 0.2;  break;
-        case 's': case 'ArrowDown' : moveForward = -0.2; break;
-        case 'd': case 'ArrowRight': moveRight = 0.2;    break;
-        case 'a': case 'ArrowLeft' : moveRight = -0.2;   break;
-        case ' ': if(!isJumped) dHeight = 2;
+        case 'w': case 'ArrowUp'   : moveForward = Math.min(5, Math.max(3, moveForward) + 0.1);  break;
+        case 's': case 'ArrowDown' : moveForward = Math.max(-5, Math.min(-3, moveForward) - 0.1);  break;
+        case 'd': case 'ArrowRight': moveRight = Math.min(5, Math.max(3, moveRight) + 0.1);  break;
+        case 'a': case 'ArrowLeft' : moveRight = Math.max(-5, Math.min(-3, moveRight) - 0.1);  break;
+        case ' ': if(!isJumped) dHeight = 50;
                     isJumped = true;
                     break;
     }
@@ -111,8 +155,8 @@ addEventListener('mousedown', (event) => {
             case 0: case 2: resetForward = false; break;
         }
         switch(event.button) {
-            case 0: moveForward = 0.5;  break;
-            case 2: moveForward = -0.5; break;
+            case 0: moveForward = 10;  break;
+            case 2: moveForward = -10; break;
         }
     }
 });
@@ -124,7 +168,17 @@ addEventListener('mouseup', (event) => {
     }
 });
 
-// Height physics
+// ------ Movement Physics ------
+
+var moveForward = 0;
+var moveRight = 0;
+var resetForward = false;
+var resetRight = false;
+
+const gravity = -10;
+const friction = 0.25;
+var isJumped = false;
+var dHeight = 0;
 
 var prev_time = 0;
 var cur_time = (new Date()).getTime();
@@ -139,31 +193,29 @@ function updateHeight() {
     dHeight += gravity * dt;
 }
 
-// Animate Function
+// ------ Animate Function ------
 
 function animate() {
     requestAnimationFrame( animate );
     
-    // controls.update();
-    
     if(!isJumped && resetForward){
-        if(moveForward > 0) moveForward = Math.max(0, moveForward-0.01);
-        else if(moveForward < 0) moveForward = Math.min(0, moveForward+0.01);
+        if(moveForward > 0) moveForward = Math.max(0, moveForward - friction);
+        else if(moveForward < 0) moveForward = Math.min(0, moveForward + friction);
         else resetForward = false;
     }
     if(!isJumped && resetRight){
-        if(moveRight > 0) moveRight = Math.max(0, moveRight-0.01);
-        else if(moveRight < 0) moveRight = Math.min(0, moveRight+0.01);
+        if(moveRight > 0) moveRight = Math.max(0, moveRight - friction);
+        else if(moveRight < 0) moveRight = Math.min(0, moveRight + friction);
         else resetRight = false;
     }
     
-    controls.moveForward(moveForward);
-    controls.moveRight(moveRight);
+    controls.moveForward(moveForward / (1 + 1.5 * isJumped));
+    controls.moveRight(moveRight / (1 + 1.5 * isJumped));
     
     updateHeight();
     
-    if(camera.position.y < 2) {
-        camera.position.y = 2;
+    if(camera.position.y < minCameraHeight) {
+        camera.position.y = minCameraHeight;
         dHeight = 0;
         isJumped = false;
     }

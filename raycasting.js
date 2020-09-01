@@ -10,6 +10,7 @@ var objects = [];                                   // Contains all objects
 var mousePos = {x: undefined, y: undefined};        // Mouse (browser) coordintes
 var grid = [], gridCnt = 30;
 const cubeSide = 50, minHeight = 50, maxHeight = 150;
+const origin = -(cubeSide * (gridCnt/2)) + (cubeSide / 2);
 
 // ***** Utility Functions *****
 
@@ -56,7 +57,6 @@ gridHelper.position.y = 0.2; // 0.15;
 
 gridGeometry = new THREE.PlaneBufferGeometry(cubeSide, cubeSide);
 
-var origin = -(cubeSide * (gridCnt/2)) + (cubeSide / 2);
 for(var row=0 ; row<gridCnt ; ++row) {
     grid.push([]);
     for(var col=0 ; col<gridCnt ; ++col) {
@@ -165,7 +165,7 @@ addEventListener('click', (event) => {
 // ------ Animate Function ------
 
 function animate() {
-	requestAnimationFrame(animate);
+	requestAnimationFrame( animate );
 
 	controls.update();
 
