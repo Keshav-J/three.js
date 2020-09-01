@@ -1,12 +1,15 @@
 // ******* Declarations ********
 
 var render, scene, camera, controls;
-var textureLoader, cubeTextures, gridHelper;
+var textureLoader, cubeTextures, gridTexture;
+var gridHelper, gridGeometry;
 var raycaster, mouse;
 var geometry, material, plane;
 
 var objects = [];                                   // Contains all objects
 var mousePos = {x: undefined, y: undefined};        // Mouse (browser) coordintes
+var grid = [], gridCnt = 30;
+const cubeSide = 50, minHeight = 50, maxHeight = 150;
 
 // ***** Utility Functions *****
 
@@ -18,8 +21,8 @@ function getRandomCubeTexture(cubeTextures) {
     return cubeTextures[Math.floor(Math.random() * cubeTextures.length)];
 }
 
-function isSamePosition(x1, y1, x2, y2) {
-    return (x1 == x2) && (y1 == y2);
+function getDistance(x1, y1, x2, y2) {
+    return Math.abs(x1 - x2) + Math.abs(y1 - y2);
 }
 
 // ---------- Renderer ----------
@@ -37,15 +40,35 @@ scene.background = new THREE.Color( 0xf0f0f0 );
 
 textureLoader = new THREE.TextureLoader();
 cubeTextures = [
-    textureLoader.load('textures/building.jpg'),
-    textureLoader.load('textures/building2.jpg'),
-    textureLoader.load('textures/building3.jpg')
+    textureLoader.load('./textures/building.jpg'),
+    textureLoader.load('./textures/building2.jpg'),
+    textureLoader.load('./textures/building3.jpg')
 ];
+gridTexture = textureLoader.load('./textures/ground.png');
+
+// --------- Grid Helper --------
+
+gridHelper = new THREE.GridHelper(1500, gridCnt, 0x5c78bd, 0x5c78bd);
+scene.add(gridHelper);
+gridHelper.position.y = 0.2; // 0.15;
 
 // ------------ Grid ------------
 
-gridHelper = new THREE.GridHelper(1500, 30);
-scene.add(gridHelper);
+gridGeometry = new THREE.PlaneBufferGeometry(cubeSide, cubeSide);
+
+var origin = -(cubeSide * (gridCnt/2)) + (cubeSide / 2);
+for(var row=0 ; row<gridCnt ; ++row) {
+    grid.push([]);
+    for(var col=0 ; col<gridCnt ; ++col) {
+        var cell = new THREE.Mesh(gridGeometry, new THREE.MeshBasicMaterial({color: 0xffffff, map: gridTexture}));
+        
+        cell.rotateX( - Math.PI/2 );
+        cell.position.set(origin + col*cubeSide, 0, origin + row*cubeSide);
+        
+        grid[row].push(cell);
+        scene.add(cell);
+    }
+}
 
 // ---------- RayCaster ---------
 
@@ -90,38 +113,48 @@ addEventListener('mousemove', () => {
 addEventListener('click', (event) => {
     event.preventDefault();
 
-    mouse.set((event.clientX / window.innerWidth) * 2 -1,
+    mouse.set((event.clientX / window.innerWidth) * 2 - 1,
                 - (event.clientY / window.innerHeight) * 2 + 1);
     
     raycaster.setFromCamera(mouse, camera);
 
     var intersects = raycaster.intersectObjects(objects);
 
-    if(intersects.length > 0 && isSamePosition(mousePos.x, mousePos.y, event.clientX, event.clientY)) {
+    if(intersects.length > 0 && getDistance(mousePos.x, mousePos.y, event.clientX, event.clientY) < 15) {
         var intersect = intersects[0];
 
         if(intersect.object !== plane) {
             // Clearing existing Cube/Building
+            
+            var cur = new THREE.Vector3(0, 0, 0);
+            cur.copy(intersect.object.position).add(intersect.face.normal);
+            cur.divideScalar(cubeSide).floor().multiplyScalar(cubeSide);
 
+            grid[gridCnt/2 + cur.z/cubeSide][gridCnt/2 + cur.x/cubeSide]
+                .material.color.set(0xffffff);
+            
+            intersect.object.material.side = 0;
+            
             scene.remove(intersect.object);
             objects.splice(objects.indexOf(intersect.object), 1);
         }
         else {
             // Creating new Cube/Building
             
-            const minHeight = 50, maxHeight = 150;
-            const cubeDimensions = {side: 50, height: getRandomInteger(minHeight, maxHeight)};
-            
-            var cubeGeometry = new THREE.BoxBufferGeometry(cubeDimensions.side, cubeDimensions.height, cubeDimensions.side);
+            const cubeHeight = getRandomInteger(minHeight, maxHeight);
+            var cubeGeometry = new THREE.BoxBufferGeometry(cubeSide, cubeHeight, cubeSide);
             var cubeMaterial = new THREE.MeshBasicMaterial({map: getRandomCubeTexture(cubeTextures)});
             var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
 
             cube.position.copy(intersect.point).add(intersect.face.normal);
-            cube.position.divideScalar(cubeDimensions.side).floor().multiplyScalar(cubeDimensions.side);
+            cube.position.divideScalar(cubeSide).floor().multiplyScalar(cubeSide);
 
-            cube.position.x += cubeDimensions.side / 2;
-            cube.position.y += cubeDimensions.height / 2;
-            cube.position.z += cubeDimensions.side / 2;
+            grid[gridCnt/2 + cube.position.z/cubeSide][gridCnt/2 + cube.position.x/cubeSide]
+                .material.color.set(0x5c78bd);
+                
+            cube.position.x += cubeSide / 2;
+            cube.position.y += cubeHeight / 2;
+            cube.position.z += cubeSide / 2;
 
             scene.add(cube);
             objects.push(cube);
