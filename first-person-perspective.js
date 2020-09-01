@@ -67,9 +67,10 @@ var moveForward = 0;
 var moveRight = 0;
 var resetForward = false;
 var resetRight = false;
+
+const gravity = -0.5;
+var isJumped = false;
 var dHeight = 0;
-const gravity = -0.2;
-const friction = 0.91;
 
 camera.position.y = 2;
 camera.position.x = 10;
@@ -99,7 +100,9 @@ addEventListener('keydown', (event) => {
         case 's': case 'ArrowDown' : moveForward = -0.2; break;
         case 'd': case 'ArrowRight': moveRight = 0.2;    break;
         case 'a': case 'ArrowLeft' : moveRight = -0.2;   break;
-        case ' ': dHeight = 0.5; break;
+        case ' ': if(!isJumped) dHeight = 2;
+                    isJumped = true;
+                    break;
     }
 });
 
@@ -112,19 +115,53 @@ addEventListener('keyup', (event) => {
     }
 });
 
+addEventListener('mousedown', (event) => {
+    if(controls.isLocked) {
+        switch(event.button) {
+            case 0: case 2: resetForward = false; break;
+        }
+        switch(event.button) {
+            case 0: moveForward = 0.5;  break;
+            case 2: moveForward = -0.5; break;
+        }
+    }
+});
+
+addEventListener('mouseup', (event) => {
+    switch(event.button) {
+        case 0: if(moveForward > 0) resetForward = true; break;
+        case 2: if(moveForward < 0) resetForward = true; break;
+    }
+});
+
+// Height physics
+
+var prev_time = 0;
+var cur_time = (new Date()).getTime();
+
+function updateHeight() {
+    prev_time = cur_time;
+    cur_time = (new Date()).getTime();
+    
+    var dt = Math.min(0.15, cur_time - prev_time);
+    
+    camera.position.y += dHeight * dt;
+    dHeight += gravity * dt;
+}
+
 // Animate Function
 
 function animate() {
-	requestAnimationFrame( animate );
-
+    requestAnimationFrame( animate );
+    
     // controls.update();
     
-    if(resetForward){
+    if(!isJumped && resetForward){
         if(moveForward > 0) moveForward = Math.max(0, moveForward-0.01);
         else if(moveForward < 0) moveForward = Math.min(0, moveForward+0.01);
         else resetForward = false;
     }
-    if(resetRight){
+    if(!isJumped && resetRight){
         if(moveRight > 0) moveRight = Math.max(0, moveRight-0.01);
         else if(moveRight < 0) moveRight = Math.min(0, moveRight+0.01);
         else resetRight = false;
@@ -133,14 +170,12 @@ function animate() {
     controls.moveForward(moveForward);
     controls.moveRight(moveRight);
     
-    if(camera.position.y + dHeight > 10)
-        dHeight = 0;
-    
-    camera.position.y += gravity + dHeight;
+    updateHeight();
     
     if(camera.position.y < 2) {
         camera.position.y = 2;
         dHeight = 0;
+        isJumped = false;
     }
     
 	renderer.render(scene, camera);
