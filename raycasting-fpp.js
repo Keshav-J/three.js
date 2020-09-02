@@ -7,10 +7,11 @@ var raycaster, mouse;
 var geometry, material, plane;
 
 var objects = [];
-var grid = [], gridCnt = 30;
+var grid = [], isFiled = [], gridCnt = 30;
 const cubeSide = 50, minHeight = 50, maxHeight = 150;
 const origin = -(cubeSide * (gridCnt/2)) + (cubeSide / 2);
 const minCameraHeight = 20;
+const minSpeed = 3, maxSpeed = 5, sprintSpeed = 10;
 
 // ***** Utility Functions *****
 
@@ -20,6 +21,22 @@ function getRandomInteger(min, max) {
 
 function getRandomCubeTexture(cubeTextures) {
     return cubeTextures[Math.floor(Math.random() * cubeTextures.length)];
+}
+
+function getPosition(x, y) {
+    x = x - (origin - cubeSide/2);
+    y = y - (origin - cubeSide/2);
+
+    x /= cubeSide;
+    y /= cubeSide;
+
+    return {z: Math.floor(x), x: Math.floor(y)};
+}
+
+function isInsidePlane(pos) {
+    if(pos.x < 0 || gridCnt <= pos.x) return false;
+    if(pos.z < 0 || gridCnt <= pos.z) return false;
+    return true;
 }
 
 function addBuilding() {
@@ -35,6 +52,7 @@ function addBuilding() {
     } while(grid[x][y].material.color.equals(new THREE.Color(0x5c78bd)));
     
     grid[x][y].material.color.set(0x5c78bd);
+    isFiled[x][y] = 1;
         
     cube.position.x = origin + y * cubeSide;
     cube.position.y = 0.1 + cubeHeight / 2;
@@ -77,6 +95,7 @@ gridGeometry = new THREE.PlaneBufferGeometry(cubeSide, cubeSide);
 
 for(var row=0 ; row<gridCnt ; ++row) {
     grid.push([]);
+    isFiled.push([]);
     for(var col=0 ; col<gridCnt ; ++col) {
         var cell = new THREE.Mesh(gridGeometry, new THREE.MeshBasicMaterial({color: 0xffffff, map: gridTexture}));
         
@@ -84,18 +103,14 @@ for(var row=0 ; row<gridCnt ; ++row) {
         cell.position.set(origin + col*cubeSide, 0, origin + row*cubeSide);
         
         grid[row].push(cell);
+        isFiled[row].push(0);
         scene.add(cell);
     }
 }
 
-// ---------- RayCaster ---------
-
-raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
-mouse = new THREE.Vector2();
-
 // ------- Fire Building --------
 
-for(var i=0 ; i<10 ; ++i)
+for(var i=0 ; i<100 ; ++i)
     addBuilding();
 console.log(objects);
 
@@ -114,14 +129,12 @@ scene.add(plane);
 
 camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 10000);
 camera.position.x = 10;
-camera.position.y = minCameraHeight + 10;
+camera.position.y = minCameraHeight + 50;
 
 // --------- Controls -----------
 
 controls = new THREE.PointerLockControls(camera, document.body);
 scene.add(controls.getObject());
-controls.minPolarAngle = Math.PI/2;
-controls.maxPolarAngle = Math.PI/2;
 
 
 // ****** Event Listeners ******
@@ -142,10 +155,10 @@ addEventListener('keydown', (event) => {
         case 'a': case 'ArrowLeft': case 'd': case 'ArrowRight': resetRight = false; break;
     }
     switch(event.key) {
-        case 'w': case 'ArrowUp'   : moveForward = Math.min(5, Math.max(3, moveForward) + 0.1);  break;
-        case 's': case 'ArrowDown' : moveForward = Math.max(-5, Math.min(-3, moveForward) - 0.1);  break;
-        case 'd': case 'ArrowRight': moveRight = Math.min(5, Math.max(3, moveRight) + 0.1);  break;
-        case 'a': case 'ArrowLeft' : moveRight = Math.max(-5, Math.min(-3, moveRight) - 0.1);  break;
+        case 'w': case 'ArrowUp'   : moveForward = Math.min(maxSpeed, Math.max(minSpeed, moveForward) + 0.1);  break;
+        case 's': case 'ArrowDown' : moveForward = Math.max(-maxSpeed, Math.min(-minSpeed, moveForward) - 0.1);  break;
+        case 'd': case 'ArrowRight': moveRight = Math.min(maxSpeed, Math.max(minSpeed, moveRight) + 0.1);  break;
+        case 'a': case 'ArrowLeft' : moveRight = Math.max(-maxSpeed, Math.min(-minSpeed, moveRight) - 0.1);  break;
         case ' ': if(!isJumped) dHeight = 50;
                     isJumped = true;
                     break;
@@ -167,8 +180,8 @@ addEventListener('mousedown', (event) => {
             case 0: case 2: resetForward = false; break;
         }
         switch(event.button) {
-            case 0: moveForward = 10;  break;
-            case 2: moveForward = -10; break;
+            case 0: moveForward = sprintSpeed;  break;
+            case 2: moveForward = -sprintSpeed; break;
         }
     }
 });
@@ -178,14 +191,6 @@ addEventListener('mouseup', (event) => {
         case 0: if(moveForward > 0) resetForward = true; break;
         case 2: if(moveForward < 0) resetForward = true; break;
     }
-});
-
-addEventListener('mousemove', (event) => {
-    mouse.set((event.clientX / window.innerWidth) * 2 - 1,
-                - (event.clientY / window.innerHeight) * 2 + 1);
-    
-    isLocked = false;
-    console.log(camera.rotation);
 });
 
 // ------ Movement Physics ------
@@ -217,14 +222,8 @@ function updateHeight() {
 
 // ------ Animate Function ------
 
-var counter = -1;
 function animate() {
-    counter++;
     requestAnimationFrame( animate );
-    
-    raycaster.setFromCamera(mouse, camera);
-    
-    var intersects = raycaster.intersectObjects(objects);
     
     if(!isJumped && resetForward){
         if(moveForward > 0) moveForward = Math.max(0, moveForward - friction);
@@ -237,15 +236,18 @@ function animate() {
         else resetRight = false;
     }
     
-    if(intersects.length == 0 && !isLocked){
+    next_pos = getPosition(camera.position.x - minSpeed+1 + moveForward / (1 + 1.5 * isJumped),
+                            camera.position.z - minSpeed+1 + moveRight / (1 + 1.5 * isJumped));
+    
+    if(isJumped || !isInsidePlane(next_pos) || !isFiled[next_pos.x][next_pos.z]) {
         controls.moveForward(moveForward / (1 + 1.5 * isJumped));
         controls.moveRight(moveRight / (1 + 1.5 * isJumped));
     }
     else
-        console.log(intersects);
-    
+        console.log(isInsidePlane(next_pos), isFiled[next_pos.x][next_pos.z]);
+
     updateHeight();
-    
+
         
     if(camera.position.y < minCameraHeight) {
         camera.position.y = minCameraHeight;
